@@ -78,29 +78,32 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
       {/* Galerie des modèles */}
       <Text className="text-xl font-bold mb-4">Modèles disponibles</Text>
-      <FlatList
-        data={models}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            className="bg-white p-4 rounded-xl shadow-lg mx-2"
-            onPress={() => navigation.navigate(item.route)}
-            style={{
-              elevation: 5, // Ombre sur Android
-              shadowColor: "#000", // Ombre sur iOS
-              shadowOffset: { width: 0, height: 3 },
-              shadowOpacity: 0.2,
-              shadowRadius: 4,
-            }}
-          >
-            <Image source={item.image} className="w-40 h-40 rounded-md mb-2" />
-            <Text className="text-lg font-semibold">{item.name}</Text>
-            <Text className="text-gray-600 text-sm">{item.description}</Text>
-          </TouchableOpacity>
-        )}
-      />
+        <FlatList
+            data={models}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{ paddingHorizontal: 10 }} // Ajoute un espace aux extrémités
+            renderItem={({ item }) => (
+                <TouchableOpacity
+                    className="bg-white p-4 rounded-xl shadow-md mx-2"
+                    onPress={() => navigation.navigate(item.route)}
+                    style={{
+                        width: 180, // Ajuste la largeur pour éviter les coupures
+                        marginHorizontal: 10, // Ajoute de l’espace entre les cartes
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 4,
+                        elevation: 3, // Android shadow
+                    }}
+                >
+                    <Image source={item.image} className="w-full h-40 rounded-md mb-2" />
+                    <Text className="text-lg font-semibold">{item.name}</Text>
+                    <Text className="text-gray-600 text-sm">{item.description}</Text>
+                </TouchableOpacity>
+            )}
+        />
     </View>
   );
 }

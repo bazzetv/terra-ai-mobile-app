@@ -3,10 +3,26 @@ import { View, Text, Image, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AntDesign } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-
+import { Redirect, useRouter } from "expo-router";
+import { useState } from "react";
 const Logo = require("../../assets/images/logo.png");
 
 export default function Login() {
+  const router = useRouter();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  const handleLogin = () => {
+    setIsLoggedIn(true);
+    console.log("Connexion en cours...");
+    
+    setTimeout(() => {
+      router.replace("/home"); // Redirige après connexion
+    }, 500);
+  };
+
+  if (isLoggedIn) {
+    return <Redirect href="/home" />;
+  }
   return (
       <SafeAreaView className="flex-1">
         {/* Fond dégradé avec arrondi en haut */}
@@ -42,7 +58,7 @@ export default function Login() {
             {/* Bouton Google avec animation */}
             <TouchableOpacity className="flex-row items-center bg-white py-3 px-6 rounded-full shadow-lg mb-4 border border-gray-300 active:bg-gray-200 transition-all">
               <AntDesign name="google" size={24} color="black" className="mr-3" />
-              <Text className="text-black font-medium text-lg">
+              <Text onPress={handleLogin} className="text-black font-medium text-lg">
                 Se connecter avec Google
               </Text>
             </TouchableOpacity>

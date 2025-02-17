@@ -30,9 +30,8 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
-        <Stack.Screen name="login" options={{ headerShown: false, animation: "fade" }} />
-        {/* ✅ Navigation principale après connexion */}
         <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)/login" options={{ headerShown: false, animation: "fade" }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
