@@ -1,0 +1,32 @@
+{
+    "models": [
+      {
+        "id": "flux1-dev",
+        "name": "Flux.1 Dev",
+        "description": "Génération détaillée et avancée.",
+        "imageUrl": "http://192.168.1.139:9000/terra-ai-bucket/issambazze/replicate-prediction-pa9tz6hhe1rm80cn33h8pehm8g-0.jpg",
+        "route": "/generate/flux1-dev"
+      },
+      {
+        "id": "flux1-schnell",
+        "name": "Flux.1 Schnell",
+        "description": "Rapide et efficace.",
+        "imageUrl": "http://192.168.1.139:9000/terra-ai-bucket/issambazze/replicate-prediction-pa9tz6hhe1rm80cn33h8pehm8g-1.jpg",
+        "route": "/generate/flux1-schnell"
+      },
+      {
+        "id": "stable-diffuser",
+        "name": "Stable Diffuser",
+        "description": "Un modèle Stable Diffusion puissant.",
+        "imageUrl": "http://192.168.1.139:9000/terra-ai-bucket/issambazze/replicate-prediction-pa9tz6hhe1rm80cn33h8pehm8g-2.jpg",
+        "route": "/generate/stable-diffuser"
+      },
+      {
+        "id": "stable-diffuser-2",
+        "name": "Stable Diffuser",
+        "description": "Un modèle Stable Diffusion puissant.",
+        "imageUrl": "http://192.168.1.139:9000/terra-ai-bucket/issambazze/replicate-prediction-pa9tz6hhe1rm80cn33h8pehm8g-3.jpg",
+        "route": "/generate/stable-diffuser"
+      }
+    ]
+  }

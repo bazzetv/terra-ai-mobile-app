@@ -32,6 +32,7 @@ export default function RootLayout() {
       <Stack>
         <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)/login" options={{ headerShown: false, animation: "fade" }} />
+        <Stack.Screen name="imageDetailScreen" options={{ title: "Détail de l'image" }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

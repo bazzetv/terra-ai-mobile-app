@@ -1,0 +1,65 @@
+{
+    "images": [
+      {
+        "id": "pa9t2h6eTrm80cn33h9pehm8g-0",
+        "user_id": "issambazz",
+        "prompt": "Supercar rouge dans un décor cyberpunk",
+        "model": "flux.1-dev",
+        "status": "pending",
+        "created_at": "2025-02-18T12:48:00Z",
+        "updated_at": "2025-02-18T12:48:30Z",
+        "url": null
+      },
+      {
+        "id": "pa9t2h6eTrm80cn33h9pehm8g-2",
+        "user_id": "issambazz",
+        "prompt": "Robot humanoïde dans un univers post-apocalyptique",
+        "model": "flux.1-schnell",
+        "status": "completed",
+        "created_at": "2025-02-18T12:48:00Z",
+        "updated_at": "2025-02-18T12:48:40Z",
+        "url": "http://192.168.1.139:9000/terra-ai-bucket/issambazze/replicate-prediction-pa9tz6hhe1rm80cn33h8pehm8g-0.jpg"
+      },
+      {
+        "id": "pa9t2h6eTrm80cn33h9pehm8g-2334",
+        "user_id": "issambazz",
+        "prompt": "Robot humanoïde dans un univers post-apocalyptique",
+        "model": "flux.1-schnell",
+        "status": "completed",
+        "created_at": "2025-02-18T12:48:00Z",
+        "updated_at": "2025-02-18T12:48:40Z",
+        "url": "http://192.168.1.139:9000/terra-ai-bucket/issambazze/replicate-prediction-pa9tz6hhe1rm80cn33h8pehm8g-0.jpg"
+      },
+
+      {
+        "id": "pa9t2h6eTrm80cn33h9pehm8g-3",
+        "user_id": "issambazz",
+        "prompt": "Paysage montagneux avec une rivière en automne",
+        "model": "stable-diffuser",
+        "status": "completed",
+        "created_at": "2025-02-18T12:48:00Z",
+        "updated_at": "2025-02-18T12:49:00Z",
+        "url": "http://192.168.1.139:9000/terra-ai-bucket/issambazze/replicate-prediction-pa9tz6hhe1rm80cn33h8pehm8g-1.jpg"
+      },
+      {
+        "id": "xarvhydhjfm80cn33hnvxgs78-0",
+        "user_id": "issambazz",
+        "prompt": "Forêt enchantée avec brume mystique",
+        "model": "flux.1-dev",
+        "status": "completed",
+        "created_at": "2025-02-18T12:49:00Z",
+        "updated_at": "2025-02-18T12:49:30Z",
+        "url": "http://192.168.1.139:9000/terra-ai-bucket/issambazze/replicate-prediction-xarvhyhdjhrm80cn33hvngsx78-2.jpg"
+      },
+      {
+        "id": "xarvhydhjfm80cn33hnvxgs78-1",
+        "user_id": "issambazz",
+        "prompt": "Ville cyberpunk sous la pluie",
+        "model": "flux.1-schnell",
+        "status": "completed",
+        "created_at": "2025-02-18T12:49:00Z",
+        "updated_at": "2025-02-18T12:49:30Z",
+        "url": "http://192.168.1.139:9000/terra-ai-bucket/issambazze/replicate-prediction-xarvhyhdjhrm80cn33hvngsx78-3.jpg"
+      }
+    ]
+  }

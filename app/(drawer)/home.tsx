@@ -1,109 +1,193 @@
-import { View, Text, TextInput, TouchableOpacity, FlatList, Image } from "react-native";
-import { useState } from "react";
-import { AntDesign } from "@expo/vector-icons";
+import { View, Text, TextInput, TouchableOpacity, FlatList, Image, ActivityIndicator, StyleSheet } from "react-native";
+import { useEffect, useState } from "react";
 import { NavigationProp } from "@react-navigation/native";
+import modelMock from "../../assets/mock/modelMock.json";
 
 type HomeScreenProps = {
   navigation: NavigationProp<any>;
 };
 
-// Liste des modèles IA disponibles
-const models = [
-  {
-    id: "train",
-    name: "Modèle d'Entraînement",
-    description: "Entraînez votre propre modèle personnalisé.",
-    image: require("../../assets/images/train.png"),
-    route: "/training",
-  },
-  {
-    id: "flux1-dev",
-    name: "Flux.1 Dev",
-    description: "Génération détaillée et avancée.",
-    image: require("../../assets/images/flux1.png"),
-    route: "/generate/flux1-dev",
-  },
-  {
-    id: "flux1-schnell",
-    name: "Flux.1 Schnell",
-    description: "Rapide et efficace.",
-    image: require("../../assets/images/flux2.png"),
-    route: "/generate/flux1-schnell",
-  },
-  {
-    id: "stable-diffuser",
-    name: "Stable Diffuser",
-    description: "Un modèle Stable Diffusion puissant.",
-    image: require("../../assets/images/flux3.png"),
-    route: "/generate/stable-diffuser",
-  },
-];
+type Model = {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl: string;
+  route: string;
+};
 
 export default function HomeScreen({ navigation }: HomeScreenProps) {
   const [prompt, setPrompt] = useState("");
+  const [models, setModels] = useState<Model[]>([]);
+  const [selectedModel, setSelectedModel] = useState<Model | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Fonction d'optimisation du prompt (simulée)
-  const optimizePrompt = () => {
-    setPrompt(prompt + " (Optimisé)");
-  };
+  useEffect(() => {
+    setLoading(true);
+    try {
+      setModels(modelMock.models);
+    } catch (error) {
+      console.error("Erreur lors du chargement des modèles :", error);
+    }
+    setLoading(false);
+  }, []);
 
   return (
-    <View className="flex-1 bg-gray-100 p-4">
-      {/* Titre */}
-      <Text className="text-2xl font-bold text-center mb-4">Générez votre image</Text>
-
+    <View style={styles.container}>
       {/* Zone de Prompt */}
-      <View className="bg-white p-6 rounded-xl shadow-lg mb-6">
+      <View style={styles.promptContainer}>
         <TextInput
-          className="border p-4 h-20 rounded-lg text-lg"
+          style={styles.promptInput}
           placeholder="Décrivez votre image..."
           value={prompt}
           onChangeText={setPrompt}
           multiline
         />
-        <View className="flex-row justify-between mt-4">
-          <TouchableOpacity
-            className="bg-blue-500 px-6 py-3 rounded-lg shadow-md"
-            onPress={optimizePrompt}
-          >
-            <Text className="text-white font-semibold text-lg">Optimiser</Text>
+        <View style={styles.buttonRow}>
+          <TouchableOpacity 
+          style={styles.optimizeButton}
+          disabled={true}
+          onPress={() => setPrompt(prompt + " (Optimisé)")}>
+            <Text style={styles.disabledButton}>Optimiser</Text>
           </TouchableOpacity>
+
           <TouchableOpacity
-            className="bg-green-500 px-6 py-3 rounded-lg shadow-md"
+            style={[styles.generateButton, !selectedModel && styles.disabledButton]}
+            disabled={!selectedModel}
           >
-            <Text className="text-white font-semibold text-lg">Générer</Text>
+            <Text style={styles.buttonText}>Générer</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Galerie des modèles */}
-      <Text className="text-xl font-bold mb-4">Modèles disponibles</Text>
+      <Text style={styles.sectionTitle}>Modèles disponibles</Text>
+
+      {loading ? (
+        <ActivityIndicator size="large" color="blue" />
+      ) : (
         <FlatList
-            data={models}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={{ paddingHorizontal: 10 }} // Ajoute un espace aux extrémités
-            renderItem={({ item }) => (
-                <TouchableOpacity
-                    className="bg-white p-4 rounded-xl shadow-md mx-2"
-                    onPress={() => navigation.navigate(item.route)}
-                    style={{
-                        width: 180, // Ajuste la largeur pour éviter les coupures
-                        marginHorizontal: 10, // Ajoute de l’espace entre les cartes
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.1,
-                        shadowRadius: 4,
-                        elevation: 3, // Android shadow
-                    }}
-                >
-                    <Image source={item.image} className="w-full h-40 rounded-md mb-2" />
-                    <Text className="text-lg font-semibold">{item.name}</Text>
-                    <Text className="text-gray-600 text-sm">{item.description}</Text>
-                </TouchableOpacity>
-            )}
+          data={models}
+          keyExtractor={(item) => item.id}
+          numColumns={2} // ✅ Deux colonnes comme dans HistoryScreen
+          contentContainerStyle={styles.gridContainer}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[
+                styles.card,
+                selectedModel?.id === item.id && styles.selectedCard && { backgroundColor: "#E8F0FE" }, 
+              ]}
+              onPress={() => setSelectedModel(item)}
+            >
+              <Image source={{ uri: item.imageUrl }} style={styles.image} />
+              <View style={styles.cardTextContainer}>
+                <Text style={styles.cardTitle}>{item.name}</Text>
+                <Text style={styles.cardDescription}>{item.description}</Text>
+              </View>
+            </TouchableOpacity>
+          )}
         />
+      )}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#f4f4f4",
+    paddingHorizontal: 10,
+  },
+  promptContainer: {
+    backgroundColor: "white",
+    padding: 10,
+    borderRadius: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    marginBottom: 10,
+  },
+  promptInput: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    padding: 10,
+    borderRadius: 8,
+    fontSize: 16,
+    height: 80,
+    backgroundColor: "white",
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+  },
+  optimizeButton: {
+    backgroundColor: "#4A90E2",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  generateButton: {
+    backgroundColor: "#2ECC71",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  disabledButton: {
+    backgroundColor: "#ccc",
+  },
+  buttonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  gridContainer: {
+    paddingBottom: 20,
+  },
+  card: {
+    flex: 1,
+    backgroundColor: "white",
+    borderRadius: 12,
+    margin: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    overflow: "hidden",
+    marginBottom: 10,
+  },
+  selectedCard: {
+    borderWidth: 2,
+    borderColor: "blue",
+    backgroundColor: "#E8F0FE",
+    shadowColor: "#4A90E2",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  image: {
+    width: "100%",
+    height: 150, // ✅ Taille similaire aux images dans HistoryScreen
+    resizeMode: "cover",
+  },
+  cardTextContainer: {
+    padding: 10,
+  },
+  cardTitle: {
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  cardDescription: {
+    fontSize: 12,
+    color: "#555",
+    marginTop: 2,
+  },
+});
