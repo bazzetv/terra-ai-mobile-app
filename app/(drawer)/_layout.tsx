@@ -19,15 +19,16 @@ export default function DrawerLayout() {
                 <Drawer.Screen name="home" component={HomeScreen} options={{
                     title: "Générez votre image",
                     headerTitleStyle: { fontWeight: "bold" }
-                }}   />
+                }} />
                 <Drawer.Screen name="training" component={TrainingScreen} options={{
                     title: "Entrainez votre model",
                     headerTitleStyle: { fontWeight: "bold" }
-                }}  />
-                <Drawer.Screen name="history" component={HistoryScreen} options={{
-                    title: "Historique de génération",
-                    headerTitleStyle: { fontWeight: "bold" }
                 }} />
+                <Drawer.Screen
+                    name="history"
+                    component={HistoryScreen}
+                    options={{ title: "Historique de génération" }}
+                />
             </Drawer.Navigator>
             {pathname !== "/history" && (
                 <AnimatedFAB

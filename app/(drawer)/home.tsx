@@ -1,7 +1,12 @@
-import { View, Text, TextInput, TouchableOpacity, FlatList, Image, ActivityIndicator, StyleSheet } from "react-native";
+import { 
+  View, Text, TextInput, TouchableOpacity, FlatList, 
+  Image, ActivityIndicator, StyleSheet, Alert 
+} from "react-native";
 import { useEffect, useState } from "react";
 import { NavigationProp } from "@react-navigation/native";
-import modelMock from "../../assets/mock/modelMock.json";
+import Slider from "@react-native-community/slider";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
 
 type HomeScreenProps = {
   navigation: NavigationProp<any>;
@@ -15,21 +20,61 @@ type Model = {
   route: string;
 };
 
+const SERVER_URL = "http://192.168.1.139:8080";
+
 export default function HomeScreen({ navigation }: HomeScreenProps) {
   const [prompt, setPrompt] = useState("");
   const [models, setModels] = useState<Model[]>([]);
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const [loading, setLoading] = useState(true);
+  const [numImages, setNumImages] = useState(1);
+  const router = useRouter();
 
   useEffect(() => {
     setLoading(true);
     try {
-      setModels(modelMock.models);
+      // Charger les modèles (simulé via JSON Mock pour l’instant)
+      setModels(require("../../assets/mock/modelMock.json").models);
     } catch (error) {
       console.error("Erreur lors du chargement des modèles :", error);
     }
     setLoading(false);
   }, []);
+
+  const handleGenerate = async () => {
+    if (!selectedModel || prompt.trim() === "") {
+      Alert.alert("Erreur", "Veuillez sélectionner un modèle et entrer un prompt.");
+      return;
+    }
+  
+    try {
+      const token = await AsyncStorage.getItem("jwt");
+      const response = await fetch(`${SERVER_URL}/generate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          prompt,
+          model: selectedModel.id,
+          numImages: numImages,
+        }),
+      });
+  
+      if (response.ok) {
+        const data = await response.json();
+        const requestId = data.requestId;
+        console.log("🔍 requestId dans Home :", requestId);
+        navigation.navigate("history", { requestId });
+      } else {
+        Alert.alert("Erreur", "Impossible de lancer la génération.");
+      }
+    } catch (error) {
+      console.error("Erreur de génération :", error);
+      Alert.alert("Erreur", "Un problème est survenu.");
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -42,17 +87,25 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           onChangeText={setPrompt}
           multiline
         />
-        <View style={styles.buttonRow}>
-          <TouchableOpacity 
-          style={styles.optimizeButton}
-          disabled={true}
-          onPress={() => setPrompt(prompt + " (Optimisé)")}>
-            <Text style={styles.disabledButton}>Optimiser</Text>
-          </TouchableOpacity>
 
+        {/* Slider pour choisir le nombre d'images */}
+        <View style={styles.sliderContainer}>
+          <Text>Nombre d'images: {numImages}</Text>
+          <Slider
+            style={styles.slider}
+            minimumValue={1}
+            maximumValue={3}
+            step={1}
+            value={numImages}
+            onValueChange={setNumImages}
+          />
+        </View>
+
+        <View style={styles.buttonRow}>
           <TouchableOpacity
             style={[styles.generateButton, !selectedModel && styles.disabledButton]}
             disabled={!selectedModel}
+            onPress={handleGenerate}
           >
             <Text style={styles.buttonText}>Générer</Text>
           </TouchableOpacity>
@@ -68,13 +121,13 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         <FlatList
           data={models}
           keyExtractor={(item) => item.id}
-          numColumns={2} // ✅ Deux colonnes comme dans HistoryScreen
+          numColumns={2}
           contentContainerStyle={styles.gridContainer}
           renderItem={({ item }) => (
             <TouchableOpacity
               style={[
                 styles.card,
-                selectedModel?.id === item.id && styles.selectedCard && { backgroundColor: "#E8F0FE" }, 
+                selectedModel?.id === item.id && styles.selectedCard,
               ]}
               onPress={() => setSelectedModel(item)}
             >
@@ -117,16 +170,17 @@ const styles = StyleSheet.create({
     height: 80,
     backgroundColor: "white",
   },
+  sliderContainer: {
+    marginVertical: 10,
+  },
+  slider: {
+    width: "100%",
+    height: 40,
+  },
   buttonRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     marginTop: 10,
-  },
-  optimizeButton: {
-    backgroundColor: "#4A90E2",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
   },
   generateButton: {
     backgroundColor: "#2ECC71",
@@ -175,7 +229,7 @@ const styles = StyleSheet.create({
   },
   image: {
     width: "100%",
-    height: 150, // ✅ Taille similaire aux images dans HistoryScreen
+    height: 150,
     resizeMode: "cover",
   },
   cardTextContainer: {

@@ -1,23 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { View, Text, FlatList, Image, ActivityIndicator, StyleSheet, TouchableOpacity } from "react-native";
 import { Card } from "react-native-paper";
-import { useRouter } from "expo-router";
-import historyMock from "../../assets/mock/historyMock.json";
-import { useRef } from "react";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRoute } from "@react-navigation/native";
+import { useFocusEffect } from "@react-navigation/native";
+import React, { useCallback } from "react";
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
+const SERVER_URL = "http://192.168.1.139:8080";
 
 type ImageData = {
   id: string;
-  user_id: string;
+  request_id: string;
   prompt: string;
-  status: "pending" | "completed";
+  status: "pending" | "done";
   created_at: string;
-  updated_at: string;
   url: string | null;
 };
 
-
-
-// ✅ Fonction pour afficher "Aujourd'hui", "Hier", "il y a X jours"
 const formatRelativeDate = (dateString: string) => {
   const date = new Date(dateString);
   const today = new Date();
@@ -28,82 +28,129 @@ const formatRelativeDate = (dateString: string) => {
   return `Il y a ${diffTime} jours`;
 };
 
-export default function HistoryScreen() {
-  const [images, setImages] = useState([]);
+
+export default function HistoryScreen({ route }) {
+  const { requestId } = route.params || {}; // ✅ Récupération propre
+  console.log("📥 Paramètres reçus dans HistoryScreen :", requestId);
+
+  const [images, setImages] = useState<ImageData[]>([]);
   const [loading, setLoading] = useState(true);
+  const prevImagesRef = useRef<ImageData[]>([]); // ✅ Stocke l'ancien état
   const router = useRouter();
-  const previousImages = useRef([]);
 
-  useEffect(() => {
-    const fetchHistory = async () => {
-      // Charger immédiatement les images
-      const newImages = historyMock.images;
+  useFocusEffect(
+    React.useCallback(() => {
+      let interval: NodeJS.Timeout | null = null;
 
-      if (JSON.stringify(newImages) !== JSON.stringify(previousImages.current)) {
-        setImages(newImages);
-        previousImages.current = newImages; // Mise à jour de la ref
-      }
+      const fetchHistory = async () => {
+        try {
+          const token = await AsyncStorage.getItem("jwt");
+          if (!token) return;
 
-      setLoading(false);
-  
-      // Rafraîchir après 10 secondes
-      setTimeout(() => {
-        setImages(historyMock.images);
-      }, 1000);
-    };
-  
-    fetchHistory();
-    const interval = setInterval(fetchHistory, 10000);
-  
-    return () => clearInterval(interval);
-  }, []);
+          const endpoint = requestId
+            ? `${SERVER_URL}/history?requestId=${requestId}`
+            : `${SERVER_URL}/history`;
+          console.log(`🔗 Chargement de l'historique depuis : ${endpoint}`);
+
+          const response = await fetch(endpoint, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const newImages = Array.isArray(data) ? data : data.images ?? [];
+
+            // ✅ Comparer avec l'ancien état pour éviter un re-render inutile
+            if (JSON.stringify(newImages) !== JSON.stringify(prevImagesRef.current)) {
+              console.log("🔄 Mise à jour des images !");
+              setImages(newImages);
+              prevImagesRef.current = newImages; // ✅ Met à jour la référence
+            } else {
+              console.log("✅ Les données sont identiques, pas de mise à jour.");
+            }
+          }
+        } catch (error) {
+          console.error("Erreur lors du chargement des images :", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchHistory();
+      interval = setInterval(fetchHistory, 10000); // 🔄 Polling actif seulement si l'écran est focus
+
+      return () => {
+        if (interval) {
+          clearInterval(interval); // ❌ Stop polling si on quitte la page
+        }
+      };
+    }, [requestId])
+  );
+
+  // ✅ Séparer les images "done" et "pending" pour gérer l'affichage
+  const doneImages = images.filter((img) => img.status === "done");
+  const pendingImages = images.filter((img) => img.status === "pending");
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={images}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        renderItem={({ item }: { item: ImageData }) => (
-          <TouchableOpacity
-            disabled={item.status === "pending"}
-            style={{ flex: 1, margin: 5 }}
-            onPress={() => {
-              setTimeout(() => {
-                router.push({
-                  pathname: "/imageDetailScreen",
-                  params: {
-                    url: item.url,
-                    prompt: item.prompt,
-                    date: formatRelativeDate(item.updated_at),
-                  },
-                });
-              }, 100); // Petit délai pour laisser les données être prêtes
-            }}
-          >
-            <Card style={styles.card}>
-              <View style={styles.imageContainer}>
-                {item.status === "pending" ? (
-                  <>
-                    <View style={styles.pendingOverlay} />
-                    <ActivityIndicator size="large" color="white" style={styles.loader} />
-                  </>
-                ) : (
-                  <Image source={{ uri: item.url! }} style={styles.image} />
-                )}
-              </View>
-              <Text numberOfLines={1} ellipsizeMode="tail" style={styles.prompt}>
-                {item.prompt}
-              </Text>
-              {item.status === "completed" ? (
-                <Text style={styles.date}>🟣 {formatRelativeDate(item.updated_at)}</Text>
-              ) : (
-                <Text style={styles.pendingText}>⏳ Génération...</Text>
-              )}
-            </Card>
-          </TouchableOpacity>
-        )}
-      />
+      {requestId && (
+        <TouchableOpacity
+          style={styles.historyButton}
+          onPress={() => router.replace("/history")}
+        >
+          <Text style={styles.historyButtonText}>📜 Voir tout l'historique</Text>
+        </TouchableOpacity>
+      )}
+
+      {loading && <ActivityIndicator size="large" color="blue" style={{ marginBottom: 20 }} />}
+
+      {/* ✅ Toujours afficher la FlatList */}
+      {images.length === 0 ? (
+        <Text style={styles.noImagesText}>Aucune image générée pour l’instant.</Text>
+      ) : (
+        <FlatList
+          data={[...pendingImages, ...doneImages]} // 🔹 D'abord "pending", ensuite "done"
+          keyExtractor={(item) => item.id}
+          numColumns={2}
+          renderItem={({ item }: { item: ImageData }) => (
+            <TouchableOpacity
+              disabled={item.status === "pending"}
+              style={{ flex: 1, margin: 5 }}
+              onPress={() => {
+                setTimeout(() => {
+                  router.push({
+                    pathname: "/imageDetailScreen",
+                    params: {
+                      url: item.url,
+                      prompt: item.prompt,
+                      date: formatRelativeDate(item.created_at),
+                    },
+                  });
+                }, 100);
+              }}
+            >
+              <Card style={styles.card}>
+                <View style={styles.imageContainer}>
+                  {item.status === "pending" ? (
+                    <>
+                      <View style={styles.pendingOverlay} />
+                      <ActivityIndicator size="large" color="white" style={styles.loader} />
+                    </>
+                  ) : (
+                    <Image source={{ uri: item.url! }} style={styles.image} />
+                  )}
+                </View>
+                <Text numberOfLines={1} ellipsizeMode="tail" style={styles.prompt}>
+                  {item.prompt}
+                </Text>
+                <Text style={item.status === "done" ? styles.date : styles.pendingText}>
+                  {item.status === "done" ? `🟣 ${formatRelativeDate(item.created_at)}` : "⏳ Génération..."}
+                </Text>
+              </Card>
+            </TouchableOpacity>
+          )}
+        />
+      )}
     </View>
   );
 }
@@ -113,6 +160,26 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 10,
     backgroundColor: "#f4f4f4",
+  },
+  historyButton: {
+    marginBottom: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    backgroundColor: "#4A90E2",
+    borderRadius: 8,
+    alignSelf: "center",
+  },
+  historyButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  noImagesText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginTop: 20,
+    color: "#555",
   },
   card: {
     flex: 1,
