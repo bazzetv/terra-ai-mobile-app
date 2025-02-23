@@ -7,20 +7,20 @@ import { NavigationProp } from "@react-navigation/native";
 import Slider from "@react-native-community/slider";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
+import { refreshToken } from "../utils/auth";
 
 type HomeScreenProps = {
   navigation: NavigationProp<any>;
 };
 
 type Model = {
-  id: string;
   name: string;
   description: string;
   imageUrl: string;
   route: string;
 };
 
-const SERVER_URL = "http://192.168.1.139:8080";
+const SERVER_URL = "http://localhost:8080/private";
 
 export default function HomeScreen({ navigation }: HomeScreenProps) {
   const [prompt, setPrompt] = useState("");
@@ -31,14 +31,51 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const router = useRouter();
 
   useEffect(() => {
-    setLoading(true);
-    try {
-      // Charger les modèles (simulé via JSON Mock pour l’instant)
-      setModels(require("../../assets/mock/modelMock.json").models);
-    } catch (error) {
-      console.error("Erreur lors du chargement des modèles :", error);
-    }
-    setLoading(false);
+    const loadModels = async () => {
+      setLoading(true);
+      try {
+        let token = await AsyncStorage.getItem("jwt");
+        if (!token) {
+          console.warn("🚫 Aucun JWT trouvé, impossible de charger les modèles.");
+          setLoading(false);
+          return;
+        }
+  
+        let response = await fetch(`${SERVER_URL}/models`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log("Response retourné par models", response);
+
+        if (response.status === 401) {
+          console.log("🔄 Token expiré, tentative de rafraîchissement...");
+          const refreshed = await refreshToken();
+          if (refreshed) {
+            token = await AsyncStorage.getItem("jwt");
+            response = await fetch(`${SERVER_URL}/models`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+          }
+        }
+  
+        if (!response.ok) {
+          throw new Error("Impossible de récupérer les modèles.");
+        }
+  
+        const modelList: Model[] = await response.json();
+        setModels(modelList);
+  
+        if (modelList.length > 0) {
+          setSelectedModel(modelList[0]);
+          console.log(`✅ Modèle sélectionné par défaut : ${modelList[0].name}`);
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement des modèles :", error);
+        Alert.alert("Erreur", "Impossible de charger les modèles disponibles.");
+      }
+      setLoading(false);
+    };
+  
+    loadModels();
   }, []);
 
   const handleGenerate = async () => {
@@ -57,15 +94,15 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         },
         body: JSON.stringify({
           prompt,
-          model: selectedModel.id,
+          model: selectedModel.name,
           numImages: numImages,
         }),
       });
   
       if (response.ok) {
         const data = await response.json();
-        const requestId = data.requestId;
-        console.log("🔍 requestId dans Home :", requestId);
+        const requestId = data.request_id;
+        console.log("� requestId dans Home :", requestId);
         navigation.navigate("history", { requestId });
       } else {
         Alert.alert("Erreur", "Impossible de lancer la génération.");
@@ -120,18 +157,18 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       ) : (
         <FlatList
           data={models}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.name}
           numColumns={2}
           contentContainerStyle={styles.gridContainer}
           renderItem={({ item }) => (
             <TouchableOpacity
               style={[
                 styles.card,
-                selectedModel?.id === item.id && styles.selectedCard,
+                selectedModel?.name === item.name && styles.selectedCard,
               ]}
               onPress={() => setSelectedModel(item)}
             >
-              <Image source={{ uri: item.imageUrl }} style={styles.image} />
+              <Image source={{ uri: `http://192.168.1.139:9000${item.imageUrl}` }} style={styles.image} />
               <View style={styles.cardTextContainer}>
                 <Text style={styles.cardTitle}>{item.name}</Text>
                 <Text style={styles.cardDescription}>{item.description}</Text>

@@ -59,7 +59,7 @@
         "status": "completed",
         "created_at": "2025-02-18T12:49:00Z",
         "updated_at": "2025-02-18T12:49:30Z",
-        "url": "http://192.168.1.139:9000/terra-ai-bucket/issambazze/replicate-prediction-xarvhyhdjhrm80cn33hvngsx78-3.jpg"
+        "url": "http://localhost:9000/terra-ai-bucket/issambazze/replicate-prediction-xarvhyhdjhrm80cn33hvngsx78-3.jpg"
       }
     ]
   }

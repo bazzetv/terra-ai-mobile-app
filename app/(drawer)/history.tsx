@@ -7,13 +7,13 @@ import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback } from "react";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-const SERVER_URL = "http://192.168.1.139:8080";
+const SERVER_URL = "http://192.168.1.139:8080/private";
 
 type ImageData = {
   id: string;
   request_id: string;
   prompt: string;
-  status: "pending" | "done";
+  status: "pending" | "uploaded";
   created_at: string;
   url: string | null;
 };
@@ -60,11 +60,11 @@ export default function HistoryScreen({ route }) {
             const data = await response.json();
             const newImages = Array.isArray(data) ? data : data.images ?? [];
 
-            // ✅ Comparer avec l'ancien état pour éviter un re-render inutile
             if (JSON.stringify(newImages) !== JSON.stringify(prevImagesRef.current)) {
               console.log("🔄 Mise à jour des images !");
               setImages(newImages);
               prevImagesRef.current = newImages; // ✅ Met à jour la référence
+              
             } else {
               console.log("✅ Les données sont identiques, pas de mise à jour.");
             }
@@ -81,14 +81,13 @@ export default function HistoryScreen({ route }) {
 
       return () => {
         if (interval) {
-          clearInterval(interval); // ❌ Stop polling si on quitte la page
+          clearInterval(interval);
         }
       };
     }, [requestId])
   );
 
-  // ✅ Séparer les images "done" et "pending" pour gérer l'affichage
-  const doneImages = images.filter((img) => img.status === "done");
+  const doneImages = images.filter((img) => img.status === "uploaded");
   const pendingImages = images.filter((img) => img.status === "pending");
 
   return (
@@ -143,8 +142,8 @@ export default function HistoryScreen({ route }) {
                 <Text numberOfLines={1} ellipsizeMode="tail" style={styles.prompt}>
                   {item.prompt}
                 </Text>
-                <Text style={item.status === "done" ? styles.date : styles.pendingText}>
-                  {item.status === "done" ? `🟣 ${formatRelativeDate(item.created_at)}` : "⏳ Génération..."}
+                <Text style={item.status === "uploaded" ? styles.date : styles.pendingText}>
+                  {item.status === "uploaded" ? `🟣 ${formatRelativeDate(item.created_at)}` : "⏳ Génération..."}
                 </Text>
               </Card>
             </TouchableOpacity>

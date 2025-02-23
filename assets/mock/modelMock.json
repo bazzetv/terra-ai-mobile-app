@@ -1,14 +1,14 @@
 {
     "models": [
       {
-        "id": "flux1-dev",
-        "name": "Flux.1 Dev",
+        "id": "bazzetv/bazzetv",
+        "name": "bazzetv/bazzetv",
         "description": "Génération détaillée et avancée.",
         "imageUrl": "http://192.168.1.139:9000/terra-ai-bucket/issambazze/replicate-prediction-pa9tz6hhe1rm80cn33h8pehm8g-0.jpg",
         "route": "/generate/flux1-dev"
       },
       {
-        "id": "flux1-schnell",
+        "id": "flux-schnell",
         "name": "Flux.1 Schnell",
         "description": "Rapide et efficace.",
         "imageUrl": "http://192.168.1.139:9000/terra-ai-bucket/issambazze/replicate-prediction-pa9tz6hhe1rm80cn33h8pehm8g-1.jpg",
