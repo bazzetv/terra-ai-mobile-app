@@ -6,6 +6,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Redirect, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import * as AuthSession from "expo-auth-session";
+import * as AppleAuthentication from "expo-apple-authentication";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SERVER_URL = "http://192.168.1.139:8080";
@@ -15,10 +16,16 @@ export default function Login() {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isAppleAvailable, setIsAppleAvailable] = useState(false);
 
+  useEffect(() => {
+    const checkAppleAuth = async () => {
+      const available = await AppleAuthentication.isAvailableAsync();
+      setIsAppleAvailable(available);
+    };
+    checkAppleAuth();
+  }, []);
 
-  
-  
   useEffect(() => {
     const checkToken = async () => {
       try {
@@ -39,26 +46,29 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     try {
       const redirectUri = AuthSession.makeRedirectUri({
-        scheme: "terraai", // ✅ Schéma défini pour Expo
+        scheme: "terraai",
         preferLocalhost: false,
       });
 
       console.log(`🔗 Redirect URI utilisée : ${redirectUri}`);
 
-      // 🔹 Redirection vers le backend (BFF)
       const authUrl = `${SERVER_URL}/auth/login?redirect_uri=${encodeURIComponent(redirectUri)}`;
       const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
 
       if (result.type === "success") {
-        const jwt = result.url.split("token=")[1]; // Récupération du JWT dans l'URL
-        if (jwt) {
+        const params = new URLSearchParams(result.url.split("?")[1]);
+        const jwt = params.get("token");
+        const refreshToken = params.get("refreshToken");
+
+        if (jwt && refreshToken) {
           await AsyncStorage.setItem("jwt", jwt);
-          console.log("🔐 Token JWT stocké !");
+          await AsyncStorage.setItem("refreshToken", refreshToken);
+          console.log("🔐 Tokens stockés !");
           Alert.alert("Connexion réussie !");
           setIsLoggedIn(true);
           router.replace("/home");
         } else {
-          Alert.alert("⚠️ Erreur : Aucun token reçu.");
+          Alert.alert("⚠️ Erreur : Tokens non reçus.");
         }
       }
     } catch (error) {
@@ -67,14 +77,47 @@ export default function Login() {
     }
   };
 
-  // ✅ Déconnexion (Suppression du JWT)
-  const handleLogout = async () => {
+  const handleAppleLogin = async () => {
     try {
-      await AsyncStorage.removeItem("jwt"); // Supprime le JWT stocké
-      setIsLoggedIn(false);
-      Alert.alert("Déconnexion réussie !");
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      console.log("🍏 Identifiants Apple :", credential);
+
+      const response = await fetch(`${SERVER_URL}/auth/apple-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          appleId: credential.user,
+          identityToken: credential.identityToken,
+          email: credential.email,
+          fullName: credential.fullName 
+            ? `${credential.fullName.givenName} ${credential.fullName.familyName}` 
+            : null,
+        }),
+      });
+
+      console.log("🔗 Réponse du serveur :", response);
+      if (response.ok) {
+        const data = await response.json();
+        const { token, refreshToken } = data;
+
+        await AsyncStorage.setItem("jwt", token);
+        await AsyncStorage.setItem("refreshToken", refreshToken);
+
+        console.log("🍏 Connexion Apple réussie !");
+        setIsLoggedIn(true);
+        router.replace("/home");
+      } else {
+        Alert.alert("⚠️ Erreur : Impossible de se connecter avec Apple.");
+      }
     } catch (error) {
-      console.error("❌ Erreur lors de la déconnexion :", error);
+      console.error("❌ Erreur de connexion avec Apple :", error);
+      Alert.alert("Erreur lors de la connexion avec Apple.");
     }
   };
 
@@ -121,6 +164,17 @@ export default function Login() {
             <AntDesign name="google" size={24} color="black" className="mr-3" />
             <Text className="text-black font-medium text-lg">Se connecter avec Google</Text>
           </TouchableOpacity>
+
+          {/* Bouton Apple */}
+          {isAppleAvailable && (
+            <AppleAuthentication.AppleAuthenticationButton
+              buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+              buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+              cornerRadius={8}
+              style={{ marginTop: 16, width: "100%", height: 44 }}
+              onPress={handleAppleLogin}
+            />
+          )}
         </View>
       </LinearGradient>
     </SafeAreaView>

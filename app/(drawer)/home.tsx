@@ -31,14 +31,24 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const router = useRouter();
 
   useEffect(() => {
-    setLoading(true);
-    try {
-      // Charger les modèles (simulé via JSON Mock pour l’instant)
-      setModels(require("../../assets/mock/modelMock.json").models);
-    } catch (error) {
-      console.error("Erreur lors du chargement des modèles :", error);
-    }
-    setLoading(false);
+    const loadModels = async () => {
+      setLoading(true);
+      try {
+        const modelList: Model[] = require("../../assets/mock/modelMock.json").models;
+        setModels(modelList);
+
+        const fluxModel = modelList.find(model => model.id === "flux1-dev");
+        if (fluxModel) {
+          setSelectedModel(fluxModel);
+          console.log(`✅ Modèle sélectionné par défaut : ${fluxModel.name}`);
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement des modèles :", error);
+      }
+      setLoading(false);
+    };
+
+    loadModels();
   }, []);
 
   const handleGenerate = async () => {
