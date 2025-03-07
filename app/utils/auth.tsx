@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const SERVER_URL = "http://192.168.1.139:8080";
+const SERVER_URL = "http://192.168.1.139:8080/auth";
 
 export const refreshToken = async (): Promise<boolean> => {
   try {
@@ -14,8 +14,10 @@ export const refreshToken = async (): Promise<boolean> => {
 
     const response = await fetch(`${SERVER_URL}/refresh`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refreshToken }),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${refreshToken}`,
+      },
     });
 
     if (!response.ok) {
@@ -25,7 +27,9 @@ export const refreshToken = async (): Promise<boolean> => {
 
     const data = await response.json();
     await AsyncStorage.setItem("jwt", data.accessToken);
-    await AsyncStorage.setItem("refreshToken", data.refreshToken); // Optionnel si le serveur renvoie un nouveau refreshToken
+    if (data.refreshToken) {
+      await AsyncStorage.setItem("refreshToken", data.refreshToken);
+    }
 
     console.log("✅ Token rafraîchi avec succès !");
     return true;

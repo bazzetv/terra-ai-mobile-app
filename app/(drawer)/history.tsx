@@ -1,12 +1,13 @@
 import { useEffect, useState, useRef } from "react";
-import { View, Text, FlatList, Image, ActivityIndicator, StyleSheet, TouchableOpacity } from "react-native";
+import {
+  View, Text, FlatList, Image, ActivityIndicator, StyleSheet, TouchableOpacity, RefreshControl
+} from "react-native";
 import { Card } from "react-native-paper";
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { useRoute } from "@react-navigation/native";
+import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
-import React, { useCallback } from "react";
-
+import React from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
 const SERVER_URL = "http://192.168.1.139:8080/private";
 
 type ImageData = {
@@ -28,21 +29,21 @@ const formatRelativeDate = (dateString: string) => {
   return `Il y a ${diffTime} jours`;
 };
 
-
 export default function HistoryScreen({ route }) {
-  const { requestId } = route.params || {}; // ✅ Récupération propre
+  const { requestId } = route.params || {};
   console.log("📥 Paramètres reçus dans HistoryScreen :", requestId);
 
   const [images, setImages] = useState<ImageData[]>([]);
   const [loading, setLoading] = useState(true);
-  const prevImagesRef = useRef<ImageData[]>([]); // ✅ Stocke l'ancien état
+  const [refreshing, setRefreshing] = useState(false);
+  const listRef = useRef<FlatList<ImageData> | null>(null); // ✅ Ref pour scroll auto
   const router = useRouter();
 
   useFocusEffect(
     React.useCallback(() => {
       let interval: NodeJS.Timeout | null = null;
 
-      const fetchHistory = async () => {
+      const fetchHistory = async (forceScroll = false) => {
         try {
           const token = await AsyncStorage.getItem("jwt");
           if (!token) return;
@@ -60,11 +61,14 @@ export default function HistoryScreen({ route }) {
             const data = await response.json();
             const newImages = Array.isArray(data) ? data : data.images ?? [];
 
-            if (JSON.stringify(newImages) !== JSON.stringify(prevImagesRef.current)) {
+            if (JSON.stringify(newImages) !== JSON.stringify(images)) {
               console.log("🔄 Mise à jour des images !");
               setImages(newImages);
-              prevImagesRef.current = newImages; // ✅ Met à jour la référence
-              
+
+              // ✅ Scroll en haut si c'est un refresh manuel
+              if (forceScroll && listRef.current) {
+                setTimeout(() => listRef.current?.scrollToOffset({ offset: 0, animated: true }), 100);
+              }
             } else {
               console.log("✅ Les données sont identiques, pas de mise à jour.");
             }
@@ -73,19 +77,24 @@ export default function HistoryScreen({ route }) {
           console.error("Erreur lors du chargement des images :", error);
         } finally {
           setLoading(false);
+          setRefreshing(false);
         }
       };
 
-      fetchHistory();
-      interval = setInterval(fetchHistory, 10000); // 🔄 Polling actif seulement si l'écran est focus
+      fetchHistory(); // Chargement initial
+      interval = setInterval(fetchHistory, 10000); // 🔄 Polling
 
       return () => {
-        if (interval) {
-          clearInterval(interval);
-        }
+        if (interval) clearInterval(interval);
       };
     }, [requestId])
   );
+
+  // 🔄 Gestion du "Pull to Refresh"
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchHistory(true);
+  };
 
   const doneImages = images.filter((img) => img.status === "uploaded");
   const pendingImages = images.filter((img) => img.status === "pending");
@@ -103,14 +112,15 @@ export default function HistoryScreen({ route }) {
 
       {loading && <ActivityIndicator size="large" color="blue" style={{ marginBottom: 20 }} />}
 
-      {/* ✅ Toujours afficher la FlatList */}
       {images.length === 0 ? (
         <Text style={styles.noImagesText}>Aucune image générée pour l’instant.</Text>
       ) : (
         <FlatList
+          ref={listRef} // ✅ Permet de scroller
           data={[...pendingImages, ...doneImages]} // 🔹 D'abord "pending", ensuite "done"
           keyExtractor={(item) => item.id}
           numColumns={2}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />} // ✅ Swipe pour refresh
           renderItem={({ item }: { item: ImageData }) => (
             <TouchableOpacity
               disabled={item.status === "pending"}

@@ -1,33 +1,44 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, Image, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import { View, Text, Image, TouchableOpacity, Alert, ActivityIndicator, Animated } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AntDesign } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { Redirect, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import * as AuthSession from "expo-auth-session";
 import * as AppleAuthentication from "expo-apple-authentication";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { StyleSheet } from "react-native";
 
 const SERVER_URL = "http://192.168.1.139:8080";
 const Logo = require("../../assets/images/logo.png");
+
+// 📸 Images générées pour le fond
+const backgroundImages = [
+  require("../../assets/images/background/flux-schnell.webp"),
+  require("../../assets/images/background/ghibsky.jpg"),
+  require("../../assets/images/background/flux-dev.webp"),
+  require("../../assets/images/background/ghibsky.jpg"),
+];
 
 export default function Login() {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isAppleAvailable, setIsAppleAvailable] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const nextImageAnim = useState(new Animated.Value(0))[0];
 
+  // ✅ Vérifie la disponibilité de Apple Auth
   useEffect(() => {
-    const checkAppleAuth = async () => {
+    (async () => {
       const available = await AppleAuthentication.isAvailableAsync();
       setIsAppleAvailable(available);
-    };
-    checkAppleAuth();
+    })();
   }, []);
 
   useEffect(() => {
-    const checkToken = async () => {
+    (async () => {
       try {
         const token = await AsyncStorage.getItem("jwt");
         if (token) {
@@ -39,17 +50,28 @@ export default function Login() {
       } finally {
         setLoading(false);
       }
-    };
-    checkToken();
+    })();
   }, []);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      Animated.timing(nextImageAnim, {
+        toValue: 1,
+        duration: 1500,
+        useNativeDriver: true,
+      }).start(() => {
+        setCurrentImageIndex((prevIndex) => (prevIndex + 1) % backgroundImages.length);
+        nextImageAnim.setValue(0);
+      });
+    }, 4000); // Temps total avant de changer l’image
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // ✅ Fonction de connexion Google
   const handleGoogleLogin = async () => {
     try {
-      const redirectUri = AuthSession.makeRedirectUri({
-        scheme: "terraai",
-        preferLocalhost: false,
-      });
-
+      const redirectUri = AuthSession.makeRedirectUri({ scheme: "terraai", preferLocalhost: false });
       console.log(`🔗 Redirect URI utilisée : ${redirectUri}`);
 
       const authUrl = `${SERVER_URL}/auth/login?redirect_uri=${encodeURIComponent(redirectUri)}`;
@@ -95,20 +117,16 @@ export default function Login() {
           appleId: credential.user,
           identityToken: credential.identityToken,
           email: credential.email,
-          fullName: credential.fullName 
-            ? `${credential.fullName.givenName} ${credential.fullName.familyName}` 
+          fullName: credential.fullName
+            ? `${credential.fullName.givenName} ${credential.fullName.familyName}`
             : null,
         }),
       });
 
-      console.log("🔗 Réponse du serveur :", response);
       if (response.ok) {
         const data = await response.json();
-        const { token, refreshToken } = data;
-
-        await AsyncStorage.setItem("jwt", token);
-        await AsyncStorage.setItem("refreshToken", refreshToken);
-
+        await AsyncStorage.setItem("jwt", data.token);
+        await AsyncStorage.setItem("refreshToken", data.refreshToken);
         console.log("🍏 Connexion Apple réussie !");
         setIsLoggedIn(true);
         router.replace("/home");
@@ -123,7 +141,7 @@ export default function Login() {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center">
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#000" }}>
         <ActivityIndicator size="large" color="#2563eb" />
       </View>
     );
@@ -134,35 +152,34 @@ export default function Login() {
   }
 
   return (
-    <SafeAreaView className="flex-1">
-      <LinearGradient
-        colors={["#1e3a8a", "#2563eb", "#7e22ce"]}
-        style={{
-          flex: 1,
-          alignItems: "center",
-          justifyContent: "center",
-          paddingHorizontal: 24,
-          borderTopLeftRadius: 40,
-          borderTopRightRadius: 40,
-          overflow: "hidden",
-        }}
-      >
-        <View className="w-full max-w-md bg-white p-8 rounded-3xl shadow-2xl border border-gray-200">
-          <Image source={Logo} className="w-24 h-24 mx-auto mb-4" resizeMode="contain" />
-          <Text className="text-gray-900 text-3xl font-extrabold text-center mb-2">
-            Bienvenue sur <Text className="text-blue-600">Terra AI</Text>
-          </Text>
-          <Text className="text-gray-600 text-lg text-center mb-6">
+    <SafeAreaView style={{ flex: 1 }}>
+      {/* 🖼️ Arrière-plan animé */}
+      <Animated.Image
+        source={backgroundImages[(currentImageIndex + backgroundImages.length - 1) % backgroundImages.length]}
+        style={[styles.backgroundImage, { opacity: 1 }]}
+        resizeMode="cover"
+      />
+
+      {/* Nouvelle image en transition */}
+      <Animated.Image
+        source={backgroundImages[currentImageIndex]}
+        style={[styles.backgroundImage, { opacity: nextImageAnim }]}
+        resizeMode="cover"
+      />
+
+      {/* ✅ Filtre sombre pour le contraste */}
+      <View style={styles.overlay}>
+        <View style={styles.card}>
+          <Image source={Logo} style={styles.logo} resizeMode="contain" />
+          <Text style={styles.title}>Bienvenue sur <Text style={{ color: "#2563eb" }}>Terra AI</Text></Text>
+          <Text style={styles.subtitle}>
             Générez des images optimisées pour vos miniatures YouTube !
           </Text>
 
           {/* Bouton Google */}
-          <TouchableOpacity
-            className="flex-row items-center bg-white py-3 px-6 rounded-full shadow-lg border border-gray-300"
-            onPress={handleGoogleLogin}
-          >
-            <AntDesign name="google" size={24} color="black" className="mr-3" />
-            <Text className="text-black font-medium text-lg">Se connecter avec Google</Text>
+          <TouchableOpacity style={styles.googleButton} onPress={handleGoogleLogin}>
+            <AntDesign name="google" size={24} color="black" />
+            <Text style={styles.googleButtonText}>Se connecter avec Google</Text>
           </TouchableOpacity>
 
           {/* Bouton Apple */}
@@ -171,12 +188,67 @@ export default function Login() {
               buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
               buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
               cornerRadius={8}
-              style={{ marginTop: 16, width: "100%", height: 44 }}
+              style={styles.appleButton}
               onPress={handleAppleLogin}
             />
           )}
         </View>
-      </LinearGradient>
+      </View>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#000" },
+  backgroundImage: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+  },
+  overlay: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    backgroundColor: "rgba(0,0,0,0.5)", // 🔹 Atténue l'arrière-plan
+  },
+  card: {
+    width: "90%",
+    maxWidth: 350,
+    backgroundColor: "rgba(255, 255, 255, 0.5)", // 🔹 Ajout de transparence
+    padding: 20,
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    alignItems: "center",
+  },
+  logo: { width: 80, height: 80, marginBottom: 10 },
+  title: { fontSize: 24, fontWeight: "bold", textAlign: "center" },
+  subtitle: { fontSize: 14, color: "#666", textAlign: "center", marginBottom: 20 },
+  googleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    width: "100%",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  googleButtonText: { fontSize: 16, fontWeight: "bold", marginLeft: 10 },
+  appleButton: { width: "100%", height: 50 },
+});
